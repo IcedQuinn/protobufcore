@@ -1,4 +1,14 @@
 
+type
+   WireType* = enum
+      wtVarint
+      wtSixtyfourBit
+      wtLengthDelimited
+      wtStartGroup
+      wtEndGroup
+      wtThirtytwoBit
+      wtUnknown
+
 proc b128enc*(value: int64): array[10, byte] =
    ## Encodes a 64-bit signed integer as up to ten bytes of output.
 
@@ -66,6 +76,30 @@ proc unzigzag32*(value: int32): int32 {.inline.} =
 
 proc unzigzag64*(value: int64): int64 {.inline.} =
    {.emit: ["result = (", value, " >> 1) ^ (", value, " << 63);"].}
+
+proc tag(value: int64; dunce: WireType): int64 =
+   result = (value shl 3) + ord(dunce)
+
+proc untag(value: int64; dunce: WireType): (int64, WireType) =
+   let wt = value and 7
+   var k {.noinit.}: WireType
+   case wt
+   of ord(wtVarint):          k = wtVarint
+   of ord(wtSixtyfourBit):    k = wtSixtyfourBit
+   of ord(wtLengthDelimited): k = wtLengthDelimited
+   of ord(wtStartGroup):      k = wtStartGroup
+   of ord(wtEndGroup):        k = wtEndGroup
+   of ord(wtThirtytwoBit):    k = wtThirtytwoBit
+   else: k = wtUnknown
+   return (value shr 3, k)
+
+static:
+   assert ord(wtVarint) == 0
+   assert ord(wtSixtyfourBit) == 1
+   assert ord(wtLengthDelimited) == 2
+   assert ord(wtStartGroup) == 3
+   assert ord(wtEndGroup) == 4
+   assert ord(wtThirtytwoBit) == 5
 
 when is_main_module:
    let a = b128enc(1)
