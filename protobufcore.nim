@@ -72,10 +72,10 @@ proc zigzag64*(value: int64): int64 {.inline.} =
    {.emit: ["result = (", value, " << 1) ^ (", value, " >> 63);"].}
 
 proc unzigzag32*(value: int32): int32 {.inline.} =
-   {.emit: ["result = (", value, " >> 1) ^ (", value, " << 31);"].}
+   {.emit: ["result = (", value, " >> 1) ^ -(", value, " & 1);"].}
 
 proc unzigzag64*(value: int64): int64 {.inline.} =
-   {.emit: ["result = (", value, " >> 1) ^ (", value, " << 63);"].}
+   {.emit: ["result = (", value, " >> 1) ^ -(", value, " & 1);"].}
 
 proc tag(value: int64; dunce: WireType): int64 =
    result = (value shl 3) + ord(dunce)
@@ -117,4 +117,6 @@ when is_main_module:
    assert zigzag32(-2) == 3
 
    assert unzigzag32(zigzag32(1337)) == 1337
+   assert unzigzag32(zigzag32(-1337)) == -1337
+
 
