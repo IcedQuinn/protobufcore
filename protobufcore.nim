@@ -66,21 +66,27 @@ proc b128dec*(value: array[10, byte]): int64=
             (inside[8].int64 shl 63)
 
 proc zigzag32*(value: int32): int32 {.inline.} =
+   ## Performs zigzag encoding on a 32-bit value.
    {.emit: ["result = (", value, " << 1) ^ (", value, " >> 31);"].}
 
 proc zigzag64*(value: int64): int64 {.inline.} =
+   ## Performs zigzag encoding on a 64-bit value.
    {.emit: ["result = (", value, " << 1) ^ (", value, " >> 63);"].}
 
 proc unzigzag32*(value: int32): int32 {.inline.} =
+   ## Reverses zigzag encoding on a 32-bit value.
    {.emit: ["result = (", value, " >> 1) ^ -(", value, " & 1);"].}
 
 proc unzigzag64*(value: int64): int64 {.inline.} =
+   ## Reverses zigzag encoding on a 64-bit value.
    {.emit: ["result = (", value, " >> 1) ^ -(", value, " & 1);"].}
 
 proc tag(value: int64; dunce: WireType): int64 =
+   ## Attaches a wiretype tag to a number.
    result = (value shl 3) + ord(dunce)
 
 proc untag(value: int64): (int64, WireType) =
+   ## Separates a wiretype tag and number.
    let wt = value and 7
    var k {.noinit.}: WireType
    case wt
