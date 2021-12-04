@@ -80,7 +80,7 @@ proc unzigzag64*(value: int64): int64 {.inline.} =
 proc tag(value: int64; dunce: WireType): int64 =
    result = (value shl 3) + ord(dunce)
 
-proc untag(value: int64; dunce: WireType): (int64, WireType) =
+proc untag(value: int64): (int64, WireType) =
    let wt = value and 7
    var k {.noinit.}: WireType
    case wt
@@ -119,4 +119,7 @@ when is_main_module:
    assert unzigzag32(zigzag32(1337)) == 1337
    assert unzigzag32(zigzag32(-1337)) == -1337
 
+   let t = untag(tag(1337, wtSixtyfourBit))
+   assert t[0] == 1337
+   assert t[1] == wtSixtyfourBit
 
