@@ -108,24 +108,25 @@ static:
    assert ord(wtThirtytwoBit) == 5
 
 when is_main_module:
-   let a = b128enc(1)
-   assert a[0] == 1
-   assert b128dec(a) == 1
+   block:
+      let a = b128enc(1)
+      assert a[0] == 1
+      assert b128dec(a) == 1
 
-   let b = b128enc(300)
-   assert b[0] == 172
-   assert b[1] == 2
-   assert b128dec(b) == 300
+      let b = b128enc(300)
+      assert b[0] == 172
+      assert b[1] == 2
+      assert b128dec(b) == 300
 
-   assert zigzag32( 0) == 0
-   assert zigzag32(-1) == 1
-   assert zigzag32( 1) == 2
-   assert zigzag32(-2) == 3
+      assert zigzag32( 0) == 0
+      assert zigzag32(-1) == 1
+      assert zigzag32( 1) == 2
+      assert zigzag32(-2) == 3
 
-   assert unzigzag32(zigzag32(1337)) == 1337
-   assert unzigzag32(zigzag32(-1337)) == -1337
+      assert unzigzag32(zigzag32(1337)) == 1337
+      assert unzigzag32(zigzag32(-1337)) == -1337
 
-   let t = untag(tag(1337, wtSixtyfourBit))
-   assert t[0] == 1337
-   assert t[1] == wtSixtyfourBit
+      let t = untag(tag(1337, wtSixtyfourBit))
+      assert t[0] == 1337
+      assert t[1] == wtSixtyfourBit
 
