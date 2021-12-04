@@ -130,3 +130,98 @@ when is_main_module:
       assert t[0] == 1337
       assert t[1] == wtSixtyfourBit
 
+#######################################################################
+
+proc read_varint*(source: string; here: var int; ok: var bool): int64 =
+   ## Reads a variable length integer from a string by moving a cursor.
+   let valid = 0..source.high
+
+   ok = false
+   if here notin valid: return
+
+   var bundle: array[10, byte]
+   for i in 0..9:
+      if (here notin valid) or ((source[here].int and 0x80) == 0): break
+      bundle[i] = source[here].byte
+      inc here
+
+   result = b128dec(bundle)
+   ok = true
+
+proc read_zigvarint*(source: string; here: var int; ok: var bool): int64 =
+   ## Reads a zigzag encoded variable length integer from a string by moving a cursor.
+   result = unzigzag64(read_varint(source, here, ok))
+
+proc read_tag*(source: string; here: var int; ok: var bool): (int64, WireType) =
+   ## Reads a field tag from a string by moving a cursor.
+   result = untag(read_varint(source, here, ok))
+
+type
+   WireEvent* = object
+      ## A union to support stream decoding.
+      field*: int64
+      case kind: WireType:
+      of wtUnknown, wtStartGroup, wtEndGroup:
+         discard
+      of wtVarint, wtLengthDelimited:
+         vdata*: int64
+      of wtSixtyfourBit:
+         sixtyfour*: array[8, byte]
+      of wtThirtytwoBit:
+         thirtytwo*: array[8, byte]
+
+proc read_event*(source: string; here: var int; ok: var bool): WireEvent =
+   ## Reads a field tag and the subsequent data (or at least length of
+   ## the data) and returns it as an event.
+
+   let valid = 0..source.high
+   let mark = here
+   defer:
+      if not ok: here = mark
+
+   let header = read_tag(source, here, ok)
+   if not ok: return
+
+   # XXX I would like to avoid copymem since it breaks compile-time and
+   # javascript targets but whats a better way to do it?
+
+   ok = true
+   case header[1]
+   of wtUnknown:
+      ok = false
+      return
+   of wtStartGroup, wtEndGroup:
+      result = WireEvent(kind: header[1], field: header[0])
+   of wtSixtyfourBit:
+      if here+8 notin valid:
+         ok = false
+         return
+      result = WireEvent(kind: header[1], field: header[0])
+      copymem(addr result.sixtyfour[0], unsafeaddr source[here], 8)
+      inc here, 8
+   of wtThirtytwoBit:
+      if here+4 notin valid:
+         ok = false
+         return
+      result = WireEvent(kind: header[1], field: header[0])
+      copymem(addr result.thirtytwo[0], unsafeaddr source[here], 4)
+      inc here, 4
+   of wtLengthDelimited:
+      let value = read_varint(source, here, ok)
+      if not ok: return
+      result = WireEvent(kind: wtLengthDelimited, field: header[0], vdata: value)
+   of wtVarint:
+      let value = read_varint(source, here, ok)
+      if not ok: return
+      result = WireEvent(kind: wtVarint, field: header[0], vdata: value)
+
+iterator events*(source: string; here: var int; ok: var bool): WireEvent =
+   ## Iterates over every event and returns it.
+   ## Allows you to reframe the read_event loop as `for x in events(...)`.
+   let valid = 0..source.high
+   var ok = true
+   while true:
+      var k = read_event(source, here, ok)
+      if ok and here in valid: yield k
+      else: break
+
