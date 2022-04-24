@@ -2,5 +2,7 @@ shell: fish
 
 commands:
    push:
-      cmd: git push github
+      cmd: |
+         git push github
+         git push gitea
 
